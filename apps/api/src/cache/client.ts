@@ -3,7 +3,9 @@ import Redis from 'ioredis';
 import { config } from '../config';
 import { logger } from '../observability/logger';
 
-export const redis = new Redis(config.redis.url, {
+const redisUrl = config.redis.url ?? 'redis://localhost:6379';
+
+export const redis = new Redis(redisUrl, {
   maxRetriesPerRequest: 3,
   retryStrategy(times) {
     const delay = Math.min(times * 200, 5000);
