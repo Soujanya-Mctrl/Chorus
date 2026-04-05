@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
     Clock,
     Shield,
@@ -16,7 +18,9 @@ import {
     BookOpen,
     Play,
     GitPullRequest,
-    Target
+    Target,
+    Sparkles,
+    Loader2
 } from "lucide-react";
 
 const diffColorMap: Record<string, string> = {
@@ -141,12 +145,99 @@ const issuesData = [
     },
 ];
 
+import { useSearchParams } from "next/navigation";
+
 export default function IssuesPage() {
-    const [selectedIssue, setSelectedIssue] = useState<(typeof issuesData)[0] | null>(null);
+    const searchParams = useSearchParams();
+    const urlParam = searchParams.get("url");
+
+    const [fetchedIssues, setFetchedIssues] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
     const [startedIssues, setStartedIssues] = useState<number[]>([]);
+    
+    // AI Guide State
+    const [aiGuide, setAiGuide] = useState<string | null>(null);
+    const [relevantFiles, setRelevantFiles] = useState<Array<{ filePath: string; startLine: number; endLine: number; symbolName?: string | null }>>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+
+
+    useEffect(() => {
+        if (!urlParam) {
+            setFetchedIssues(issuesData);
+            return;
+        }
+
+        const fetchIssues = async () => {
+            setLoading(true);
+            try {
+                const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+                const encodedRepoUrl = encodeURIComponent(urlParam); 
+                const res = await fetch(`${API_BASE}/api/repo/issues?url=${encodedRepoUrl}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // The backend returns { repo: { ... }, issues: [ ... ] }, assuming the shape here matches issuesData.
+                    // If the backend returns standard GH issues, we map them to fit issuesData schema:
+                    // IMPORTANT: issue.number is the GitHub issue number (e.g. 42).
+                    // issue.id is the large node ID — NOT what the API expects.
+                    const mappedIssues = (data.issues || []).map((issue: any) => ({
+                        id: issue.id,          // node ID (for React key)
+                        issueNumber: issue.number, // actual GitHub issue number for API calls
+                        title: issue.title,
+                        repo: urlParam.replace('https://github.com/', ''),
+                        difficulty: "Intermediate",
+                        diffColor: "yellow",
+                        time: "2-4 hrs",
+                        labels: issue.labels.map((l: any) => (typeof l === 'string' ? l : l.name)),
+                        description: issue.body || "No description provided.",
+                        tasks: ["Review issue", "Implement fix", "Test"],
+                        stars: data.repo?.stars || 0,
+                        htmlUrl: issue.html_url,
+                    }));
+                    setFetchedIssues(mappedIssues.length > 0 ? mappedIssues : issuesData);
+                } else {
+                     setFetchedIssues(issuesData);
+                }
+            } catch (e) {
+                console.error(e)
+                setFetchedIssues(issuesData);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchIssues();
+    }, [urlParam]);
 
     const handleStart = (id: number) => {
         setStartedIssues((prev) => [...prev, id]);
+    };
+
+    const handleGenerateGuide = async (issue: any) => {
+        setIsGenerating(true);
+        setAiGuide(null);
+        setRelevantFiles([]);
+        try {
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+            const encodedRepoId = encodeURIComponent(issue.repo);
+            // Use issueNumber (real GitHub issue number) for fetched issues,
+            // fall back to id for mock issuesData which uses numeric IDs directly
+            const issueNum = issue.issueNumber ?? issue.id;
+            const res = await fetch(`${API_BASE}/api/repo/${encodedRepoId}/issues/${issueNum}/guide`, {
+                credentials: "include"
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAiGuide(data.guide);
+                setRelevantFiles(data.relevantFiles ?? []);
+            } else {
+                setAiGuide("Failed to generate the AI contribution guide. Please ensure the backend is running and Gemini API key is set.");
+            }
+        } catch (e) {
+            setAiGuide("Error generating guide. Check your network or backend server.");
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
@@ -192,7 +283,7 @@ export default function IssuesPage() {
 
                 {/* Issue Grid */}
                 <div className="space-y-4">
-                    {issuesData.map((issue, i) => (
+                    {fetchedIssues.map((issue, i) => (
                         <motion.div
                             key={issue.id}
                             initial={{ opacity: 0, x: -20 }}
@@ -228,7 +319,7 @@ export default function IssuesPage() {
                                             </span>
                                         </div>
                                         <div className="flex flex-wrap gap-1.5">
-                                            {issue.labels.map((label) => (
+                                            {issue.labels.map((label: string) => (
                                                 <Badge
                                                     key={label}
                                                     className="text-xs border border-white/5 text-slate-500 bg-transparent"
@@ -275,11 +366,18 @@ export default function IssuesPage() {
             </div>
 
             {/* Issue Detail Modal */}
-            <Dialog open={!!selectedIssue} onOpenChange={(o) => !o && setSelectedIssue(null)}>
-                <DialogContent className="bg-[#121212] border-white/10 max-w-2xl">
+            <Dialog open={!!selectedIssue} onOpenChange={(o) => {
+                if (!o) {
+                    setSelectedIssue(null);
+                    setAiGuide(null);
+                    setRelevantFiles([]);
+                }
+            }}>
+                <DialogContent className="bg-[#121212] border-white/10 max-w-2xl w-full flex flex-col max-h-[90vh] p-0 gap-0 overflow-hidden">
                     {selectedIssue && (
                         <>
-                            <DialogHeader>
+                            {/* Sticky header */}
+                            <div className="px-6 pt-6 pb-4 border-b border-white/5 flex-shrink-0">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Badge className={`text-xs border ${diffColorMap[selectedIssue.diffColor]}`}>
                                         <Shield className="w-3 h-3 mr-1" /> {selectedIssue.difficulty}
@@ -288,20 +386,45 @@ export default function IssuesPage() {
                                         <Clock className="w-3 h-3 mr-1" /> {selectedIssue.time}
                                     </Badge>
                                 </div>
-                                <DialogTitle className="text-white text-xl leading-tight">
-                                    {selectedIssue.title}
-                                </DialogTitle>
-                                <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
-                                    <GitPullRequest className="w-3 h-3" /> {selectedIssue.repo}
-                                </p>
-                            </DialogHeader>
+                                <DialogHeader>
+                                    <DialogTitle className="text-white text-xl leading-tight">
+                                        {selectedIssue.title}
+                                    </DialogTitle>
+                                    <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
+                                        <GitPullRequest className="w-3 h-3" /> {selectedIssue.repo}
+                                    </p>
+                                </DialogHeader>
+                            </div>
 
-                            <div className="space-y-5 pt-2">
+                            {/* Scrollable body */}
+                            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin] [scrollbar-color:#334155_transparent]">
+                                {/* Description with Markdown */}
                                 <div>
                                     <h4 className="text-sm font-semibold text-white mb-2">Overview</h4>
-                                    <p className="text-slate-400 text-sm leading-relaxed">
-                                        {selectedIssue.description}
-                                    </p>
+                                    <div className="prose prose-sm prose-invert max-w-none text-slate-400 leading-relaxed
+                                        [&_h1]:text-white [&_h1]:text-base [&_h1]:font-bold [&_h1]:mt-3 [&_h1]:mb-1
+                                        [&_h2]:text-white [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1
+                                        [&_h3]:text-slate-300 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1
+                                        [&_p]:text-slate-400 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:my-1
+                                        [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:space-y-0.5
+                                        [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:space-y-0.5
+                                        [&_li]:text-slate-400 [&_li]:text-sm
+                                        [&_code]:bg-white/10 [&_code]:text-orange-300 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono
+                                        [&_pre]:bg-white/5 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:overflow-x-auto
+                                        [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-slate-300
+                                        [&_blockquote]:border-l-2 [&_blockquote]:border-orange-500/40 [&_blockquote]:pl-3 [&_blockquote]:text-slate-500 [&_blockquote]:italic
+                                        [&_a]:text-orange-400 [&_a]:underline [&_a]:underline-offset-2
+                                        [&_hr]:border-white/10 [&_hr]:my-3
+                                        [&_table]:w-full [&_table]:text-xs [&_table]:border-collapse
+                                        [&_th]:text-slate-300 [&_th]:font-semibold [&_th]:border [&_th]:border-white/10 [&_th]:px-2 [&_th]:py-1 [&_th]:bg-white/5
+                                        [&_td]:text-slate-400 [&_td]:border [&_td]:border-white/10 [&_td]:px-2 [&_td]:py-1
+                                        [&_strong]:text-slate-200 [&_strong]:font-semibold
+                                        [&_em]:text-slate-400 [&_em]:italic
+                                    ">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {selectedIssue.description}
+                                        </ReactMarkdown>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -309,7 +432,7 @@ export default function IssuesPage() {
                                         Issue Checklist ({selectedIssue.tasks.length} tasks)
                                     </h4>
                                     <div className="space-y-2">
-                                        {selectedIssue.tasks.map((task, i) => (
+                                        {selectedIssue.tasks.map((task: string, i: number) => (
                                             <div key={i} className="flex items-start gap-2">
                                                 <div
                                                     className={`w-4 h-4 rounded border mt-0.5 flex-shrink-0 flex items-center justify-center ${startedIssues.includes(selectedIssue.id) && i === 0
@@ -344,32 +467,128 @@ export default function IssuesPage() {
                                     />
                                 </div>
 
-                                <div className="flex gap-3">
-                                    {!startedIssues.includes(selectedIssue.id) ? (
+                                {/* AI Contribution Guide Area */}
+                                <div className="border border-white/10 rounded-xl p-4 bg-white/5">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-purple-400" />
+                                            <h4 className="text-sm font-semibold text-white">AI Contribution Agent</h4>
+                                        </div>
                                         <Button
-                                            className="flex-1 bg-orange-600 hover:bg-orange-500 text-white border-0 shadow-lg shadow-orange-500/20 hover:scale-[1.02] transition-transform"
-                                            onClick={() => handleStart(selectedIssue.id)}
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-xs border-purple-500/20 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300"
+                                            onClick={() => handleGenerateGuide(selectedIssue)}
+                                            disabled={isGenerating}
                                         >
-                                            <Play className="w-4 h-4 mr-2" /> Start This Issue
+                                            {isGenerating ? (
+                                                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Analyzing Codebase...</>
+                                            ) : (
+                                                <><Sparkles className="w-3.5 h-3.5 mr-1.5" /> Generate Guide</>
+                                            )}
                                         </Button>
-                                    ) : (
-                                        <Button
-                                            className="flex-1 bg-green-600/20 text-green-400 border border-green-500/20"
-                                            disabled
-                                        >
-                                            <CheckCircle className="w-4 h-4 mr-2" /> Issue In Progress
-                                        </Button>
-                                    )}
-                                    <Button
-                                        variant="outline"
-                                        className="border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
-                                        asChild
-                                    >
-                                        <a href="#" target="_blank" rel="noopener noreferrer">
-                                            <ArrowRight className="w-4 h-4 mr-1" /> View on GitHub
-                                        </a>
-                                    </Button>
+                                    </div>
+
+                                    <AnimatePresence>
+                                        {aiGuide && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                className="mt-3 relative"
+                                            >
+                                                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500/60 to-orange-500/60 rounded-full" />
+                                                <div className="pl-4 prose prose-sm prose-invert max-w-none
+                                                    [&_h1]:text-white [&_h1]:text-sm [&_h1]:font-bold [&_h1]:mt-2 [&_h1]:mb-1
+                                                    [&_h2]:text-white [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1
+                                                    [&_h3]:text-purple-300 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-0.5
+                                                    [&_p]:text-slate-300 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:my-1
+                                                    [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:space-y-0.5
+                                                    [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:space-y-0.5
+                                                    [&_li]:text-slate-300 [&_li]:text-sm
+                                                    [&_code]:bg-purple-500/10 [&_code]:text-purple-300 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono
+                                                    [&_pre]:bg-white/5 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:overflow-x-auto
+                                                    [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-slate-300
+                                                    [&_blockquote]:border-l-2 [&_blockquote]:border-purple-500/40 [&_blockquote]:pl-3 [&_blockquote]:text-slate-400
+                                                    [&_a]:text-purple-400 [&_a]:underline [&_a]:underline-offset-2
+                                                    [&_strong]:text-slate-200 [&_strong]:font-semibold
+                                                    [&_hr]:border-white/10
+                                                    [&_table]:w-full [&_table]:text-xs [&_table]:border-collapse
+                                                    [&_th]:text-slate-300 [&_th]:font-semibold [&_th]:border [&_th]:border-white/10 [&_th]:px-2 [&_th]:py-1 [&_th]:bg-white/5
+                                                    [&_td]:text-slate-400 [&_td]:border [&_td]:border-white/10 [&_td]:px-2 [&_td]:py-1
+                                                ">
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                        {aiGuide}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    {/* Relevant Files Panel */}
+                                    <AnimatePresence>
+                                        {relevantFiles.length > 0 && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                className="mt-4"
+                                            >
+                                                <div className="flex items-center gap-1.5 mb-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                                                    <span className="text-xs font-semibold text-green-400 uppercase tracking-wider">Files to Change</span>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    {relevantFiles.map((f, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="flex items-center gap-2 bg-green-500/5 border border-green-500/15 rounded-lg px-3 py-2 group"
+                                                        >
+                                                            <span className="text-green-500/60 text-xs font-mono select-none">{String(i + 1).padStart(2, '0')}</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-mono text-green-300 truncate">{f.filePath}</p>
+                                                                {f.symbolName && (
+                                                                    <p className="text-[10px] text-slate-500 mt-0.5">{f.symbolName}</p>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[10px] font-mono text-slate-500 bg-white/5 px-1.5 py-0.5 rounded flex-shrink-0">
+                                                                L{f.startLine}–{f.endLine}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
+                            </div>
+
+                            {/* Sticky footer */}
+                            <div className="px-6 py-4 border-t border-white/5 flex-shrink-0 flex gap-3">
+                                {!startedIssues.includes(selectedIssue.id) ? (
+                                    <Button
+                                        className="flex-1 bg-orange-600 hover:bg-orange-500 text-white border-0 shadow-lg shadow-orange-500/20 hover:scale-[1.02] transition-transform"
+                                        onClick={() => handleStart(selectedIssue.id)}
+                                    >
+                                        <Play className="w-4 h-4 mr-2" /> Start This Issue
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        className="flex-1 bg-green-600/20 text-green-400 border border-green-500/20"
+                                        disabled
+                                    >
+                                        <CheckCircle className="w-4 h-4 mr-2" /> Issue In Progress
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="outline"
+                                    className="border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
+                                    asChild
+                                >
+                                    <a href={selectedIssue.htmlUrl || "#"} target="_blank" rel="noopener noreferrer">
+                                        <ArrowRight className="w-4 h-4 mr-1" /> View on GitHub
+                                    </a>
+                                </Button>
                             </div>
                         </>
                     )}

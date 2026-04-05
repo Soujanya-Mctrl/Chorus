@@ -6,7 +6,7 @@ import { processReindexChunks } from '../processors/reindexChunks.processor';
 import Redis from 'ioredis';
 
 export function registerReindexChunksJob() {
-  const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+  const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null });
 
   new Worker<ReindexChunksJobPayload>(
     QueueName.REINDEX_CHUNKS,

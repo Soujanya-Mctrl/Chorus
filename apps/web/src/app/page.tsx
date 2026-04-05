@@ -18,7 +18,7 @@ import Link from "next/link";
 
 import type { Variants } from "framer-motion";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },

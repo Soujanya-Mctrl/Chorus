@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Flame, Coins, Bell, ChevronDown, Users, Target, Github, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface AuthUser {
     id: string;
