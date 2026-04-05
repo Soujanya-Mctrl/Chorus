@@ -24,6 +24,7 @@
     "isomorphic-git": "^1.25.0",
     "mongoose": "^8.1.0",
     "pino": "^8.18.0",
+    "universal-user-agent": "^7.0.3",
     "zod": "^3.22.0"
   },
   "devDependencies": {
