@@ -65,7 +65,7 @@ export default function ProfilePage() {
     useEffect(() => {
         async function fetchProfile() {
             try {
-                const res = await fetch("http://localhost:8000/api/user/profile", {
+                const res = await fetch("http://localhost:3001/api/user/profile", {
                     credentials: "include",
                 });
                 if (res.ok) {

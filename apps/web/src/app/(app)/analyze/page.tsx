@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ArchVisualization from "@/components/visualization/ArchVisualization";
 import { sampleGraph } from "@/data/sampleGraph";
@@ -21,7 +21,10 @@ import {
     ArrowRight,
     CheckCircle,
     ExternalLink,
+    X,
 } from "lucide-react";
+
+const STORAGE_KEY = "chorus:analyze:state";
 
 const diffColorMap: Record<string, string> = {
     green: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -54,6 +57,33 @@ export default function AnalyzePage() {
     const [analyzed, setAnalyzed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [analysisData, setAnalysisData] = useState<any>(null);
+    const [hydrated, setHydrated] = useState(false);
+
+    // Restore persisted state on first mount
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const { url: savedUrl, analysisData: savedData, analyzed: savedAnalyzed } = JSON.parse(saved);
+                if (savedUrl) setUrl(savedUrl);
+                if (savedData) setAnalysisData(savedData);
+                if (savedAnalyzed) setAnalyzed(savedAnalyzed);
+            }
+        } catch (e) {
+            // ignore parse errors
+        }
+        setHydrated(true);
+    }, []);
+
+    // Persist state to localStorage whenever it changes
+    useEffect(() => {
+        if (!hydrated) return;
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ url, analysisData, analyzed }));
+        } catch (e) {
+            // ignore storage errors
+        }
+    }, [url, analysisData, analyzed, hydrated]);
 
     const handleAnalyze = async () => {
         if (!url) return;
@@ -62,8 +92,7 @@ export default function AnalyzePage() {
             const res = await fetch("http://localhost:3001/api/repo/analyze", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // We use a dummy github username `vanshdeo` down here right now to see the personalized difficulty calculation
-                body: JSON.stringify({ url, githubUsername: "vanshdeo" }), 
+                body: JSON.stringify({ url, githubUsername: "vanshdeo" }),
             });
             const data = await res.json();
             setAnalysisData(data);
@@ -73,6 +102,13 @@ export default function AnalyzePage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleClear = () => {
+        setUrl("https://github.com/vercel/next.js");
+        setAnalyzed(false);
+        setAnalysisData(null);
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     };
 
     return (
@@ -98,34 +134,59 @@ export default function AnalyzePage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="flex gap-3 mb-10"
+                    className="mb-10"
                 >
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                        <input
-                            type="text"
-                            value={url}
-                            onChange={(e) => { setUrl(e.target.value); setAnalyzed(false); setAnalysisData(null); }}
-                            placeholder="https://github.com/owner/repo"
-                            className="w-full bg-[#121212] border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-orange-500/40"
-                        />
-                    </div>
-                    <Button
-                        onClick={handleAnalyze}
-                        disabled={loading}
-                        className="bg-orange-600 hover:bg-orange-500 text-white border-0 px-6"
-                    >
-                        {loading ? (
-                            <span className="flex items-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Analyzing…
-                            </span>
-                        ) : (
-                            <span className="flex items-center gap-2">
-                                <Brain className="w-4 h-4" /> Analyze
-                            </span>
+                    <div className="flex gap-3">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <input
+                                type="text"
+                                value={url}
+                                onChange={(e) => { setUrl(e.target.value); setAnalyzed(false); setAnalysisData(null); }}
+                                placeholder="https://github.com/owner/repo"
+                                className="w-full bg-[#121212] border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-orange-500/40"
+                            />
+                        </div>
+                        <Button
+                            onClick={handleAnalyze}
+                            disabled={loading}
+                            className="bg-orange-600 hover:bg-orange-500 text-white border-0 px-6"
+                        >
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Analyzing…
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    <Brain className="w-4 h-4" /> Analyze
+                                </span>
+                            )}
+                        </Button>
+                        {analyzed && (
+                            <Button
+                                onClick={handleClear}
+                                variant="outline"
+                                className="border-white/10 text-slate-400 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/5 transition-colors px-3"
+                                title="Clear results"
+                            >
+                                <X className="w-4 h-4" />
+                            </Button>
                         )}
-                    </Button>
+                    </div>
+                    {/* Cached state indicator */}
+                    {analyzed && analysisData && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-2 mt-2"
+                        >
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                            <span className="text-xs text-slate-500">
+                                Showing cached results for <span className="text-slate-400 font-mono">{analysisData.repo?.owner}/{analysisData.repo?.name}</span> — <button onClick={handleAnalyze} className="text-orange-400 hover:text-orange-300 underline underline-offset-2">Re-analyze</button>
+                            </span>
+                        </motion.div>
+                    )}
                 </motion.div>
 
                 {/* Results */}
@@ -294,7 +355,7 @@ export default function AnalyzePage() {
                                 </h3>
                                 <div className="flex items-center gap-4 mb-2">
                                     <Progress value={Math.min(100, Math.max(0, 100 - (analysisData.difficulty?.familiarityPercent ?? 50)))} className="flex-1 h-3" />
-                                    <span className="text-2xl font-bold text-yellow-400">{analysisData.difficulty?.rampScore ?? "N/A"}/5</span>
+                                    <span className="text-2xl font-bold text-yellow-400">{Math.min(100, Math.max(0, 100 - (analysisData.difficulty?.familiarityPercent ?? 0)))}%</span>
                                     <Badge className={`border ${diffColorMap[getScoreColor(analysisData.difficulty?.rampScore ?? 0)]}`}>
                                         {analysisData.difficulty?.rampLabel ?? "Unknown"}
                                     </Badge>
@@ -322,8 +383,8 @@ export default function AnalyzePage() {
                                     className="bg-orange-600 hover:bg-orange-500 text-white border-0 shadow-lg shadow-orange-500/20 px-10 hover:scale-105 transition-transform"
                                     asChild
                                 >
-                                    <a href="/quests">
-                                        Explore Quests for this Repo <ArrowRight className="w-5 h-5 ml-2" />
+                                    <a href={`/issues?url=${encodeURIComponent(url)}`}>
+                                        View Issues for this Repo <ArrowRight className="w-5 h-5 ml-2" />
                                     </a>
                                 </Button>
                             </div>

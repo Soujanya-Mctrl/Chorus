@@ -7,6 +7,7 @@ const router = Router();
 const controller = new RepoController();
 
 router.post('/analyze', controller.analyze);
+router.get('/issues', controller.getIssues);
 router.get('/:id', controller.getById);
 router.get('/', controller.list);
 
@@ -14,5 +15,8 @@ router.get('/', controller.list);
 // GET /api/repo/:repoId/issues/:issueNumber/difficulty?githubUsername=xxx
 // Note: repoId must be URL-encoded ("owner%2Frepo")
 router.get('/:repoId/issues/:issueNumber/difficulty', controller.getIssueDifficulty);
+
+// Issue AI Guide
+router.get('/:repoId/issues/:issueNumber/guide', controller.getContributionGuide);
 
 export { router as repoRoutes };

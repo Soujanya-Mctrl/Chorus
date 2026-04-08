@@ -6,7 +6,7 @@ import { processUpdateGraph } from '../processors/updateGraph.processor';
 import Redis from 'ioredis';
 
 export function registerUpdateGraphJob() {
-  const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+  const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null });
 
   new Worker<UpdateGraphJobPayload>(
     QueueName.UPDATE_GRAPH,

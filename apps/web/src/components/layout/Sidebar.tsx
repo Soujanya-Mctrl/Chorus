@@ -24,10 +24,34 @@ const navLinks = [
     { href: "/profile", label: "Profile", icon: User },
 ];
 
+const ANALYZE_STORAGE_KEY = "chorus:analyze:state";
+
 export default function Sidebar() {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [analyzedRepoUrl, setAnalyzedRepoUrl] = useState<string | null>(null);
+
+    // Read the last analyzed repo URL from localStorage
+    useEffect(() => {
+        const readAnalyzedUrl = () => {
+            try {
+                const saved = localStorage.getItem(ANALYZE_STORAGE_KEY);
+                if (saved) {
+                    const { url, analyzed } = JSON.parse(saved);
+                    setAnalyzedRepoUrl(analyzed && url ? url : null);
+                } else {
+                    setAnalyzedRepoUrl(null);
+                }
+            } catch {
+                setAnalyzedRepoUrl(null);
+            }
+        };
+        readAnalyzedUrl();
+        // Re-read whenever user navigates (e.g. back from analyze page)
+        window.addEventListener('focus', readAnalyzedUrl);
+        return () => window.removeEventListener('focus', readAnalyzedUrl);
+    }, [pathname]);
 
     // Close mobile sidebar on route change
     useEffect(() => {
@@ -113,11 +137,16 @@ export default function Sidebar() {
                 {/* Navigation Links */}
                 <div className="flex-1 py-4 px-2.5 space-y-1 overflow-x-hidden">
                     {navLinks.map(({ href, label, icon: Icon }) => {
-                        const isActive = pathname === href;
+                        // Dynamically append the analyzed repo URL to the Issues link
+                        const resolvedHref =
+                            href === "/issues" && analyzedRepoUrl
+                                ? `/issues?url=${encodeURIComponent(analyzedRepoUrl)}`
+                                : href;
+                        const isActive = pathname === href || pathname.startsWith(href + "?");
                         return (
                             <Link
                                 key={href}
-                                href={href}
+                                href={resolvedHref}
                                 className={cn(
                                     "flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border-l-[3px]",
                                     (isCollapsed && !isMobileOpen) ? "justify-center" : "gap-3",
