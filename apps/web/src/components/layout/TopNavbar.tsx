@@ -1,74 +1,15 @@
 "use client";
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Flame, Coins, Bell, ChevronDown, Users, Target, Github, LogOut } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-interface AuthUser {
-    id: string;
-    username: string;
-    name: string;
-    avatarUrl: string | null;
-    email: string | null;
-    skillProfile: {
-        overallLevel: string;
-        totalRepos: number;
-        totalStars: number;
-        contributionCount: number;
-        accountAgeYears: number;
-        languageStats: Record<string, number>;
-    } | null;
-}
+import { Flame, Bell, Target, Github } from "lucide-react";
+import { useUser, UserButton } from "@clerk/nextjs";
+import Link from "next/link";
 
 export default function TopNavbar() {
-    const [user, setUser] = useState<AuthUser | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { isLoaded, isSignedIn, user } = useUser();
 
-    useEffect(() => {
-        checkAuthStatus();
-    }, []);
-
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get("login") === "success") {
-            checkAuthStatus();
-            window.history.replaceState({}, "", window.location.pathname);
-        }
-    }, []);
-
-    const checkAuthStatus = async () => {
-        try {
-            const response = await fetch(`${API_BASE}/api/auth/status`, {
-                credentials: "include",
-            });
-            const data = await response.json();
-            if (data.authenticated) {
-                setUser(data.user);
-            }
-        } catch (error) {
-            console.error("Auth check failed:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLogin = () => {
-        window.location.href = "/sign-in";
-    };
-
-    const handleLogout = async () => {
-        try {
-            await fetch(`${API_BASE}/api/auth/logout`, {
-                method: "POST",
-                credentials: "include",
-            });
-            setUser(null);
-        } catch (error) {
-            console.error("Logout failed:", error);
-        }
-    };
+    // Default mock stats until backend connection is fully restored
+    const contributionCount = 0;
+    const totalRepos = 0;
 
     return (
         <nav className="h-14 border-b border-white/5 bg-[#0a0a0a]/20 backdrop-blur-2xl sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6">
@@ -85,7 +26,7 @@ export default function TopNavbar() {
                     <div>
                         <div className="text-[9px] lg:text-[10px] uppercase font-bold text-slate-500 tracking-wider">Contributions</div>
                         <div className="text-xs lg:text-sm font-black text-white">
-                            {user ? user.skillProfile?.contributionCount?.toLocaleString() || "0" : "--"}
+                            {isSignedIn ? contributionCount.toLocaleString() : "--"}
                         </div>
                     </div>
                 </div>
@@ -98,7 +39,7 @@ export default function TopNavbar() {
                     <div>
                         <div className="text-[9px] lg:text-[10px] uppercase font-bold text-slate-500 tracking-wider">Repositories</div>
                         <div className="text-xs lg:text-sm font-black text-white">
-                            {user ? user.skillProfile?.totalRepos?.toLocaleString() || "0" : "--"}
+                            {isSignedIn ? totalRepos.toLocaleString() : "--"}
                         </div>
                     </div>
                 </div>
@@ -106,35 +47,27 @@ export default function TopNavbar() {
 
             {/* Right side: User State */}
             <div className="flex items-center gap-3 sm:gap-4 lg:gap-6">
-                {user ? (
+                {isSignedIn ? (
                     <>
                         {/* Notifications */}
                         <button className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition">
                             <Bell className="w-4 h-4" />
                         </button>
 
-                        {/* Blank spacer removing duplicate stats pill */}
-
                         {/* Profile Section */}
-                        <div className="flex items-center gap-2 lg:gap-3 cursor-pointer hover:opacity-80 transition pl-2 lg:pl-4 border-l border-white/5">
-                            <Avatar className="w-7 h-7 lg:w-8 lg:h-8 border border-white/10">
-                                {user.avatarUrl ? (
-                                    <AvatarImage src={user.avatarUrl} alt={user.username} />
-                                ) : null}
-                                <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-600 text-white font-bold text-xs">
-                                    {user.username?.slice(0, 2).toUpperCase() || "??"}
-                                </AvatarFallback>
-                            </Avatar>
+                        <div className="flex items-center gap-2 lg:gap-3 pl-2 lg:pl-4 border-l border-white/5">
+                            <UserButton 
+                                appearance={{ 
+                                    elements: { 
+                                        userButtonAvatarBox: "w-7 h-7 lg:w-8 lg:h-8 border border-white/10",
+                                    } 
+                                }}
+                            />
                             <div className="hidden md:flex flex-col">
-                                <span className="text-xs lg:text-sm font-semibold text-white leading-tight">{user.username}</span>
+                                <span className="text-xs lg:text-sm font-semibold text-white leading-tight">
+                                    {user?.username || user?.firstName || "Developer"}
+                                </span>
                             </div>
-                            <button
-                                onClick={handleLogout}
-                                className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition ml-1"
-                                title="Logout"
-                            >
-                                <LogOut className="w-3 h-3" />
-                            </button>
                         </div>
                     </>
                 ) : (
@@ -143,15 +76,22 @@ export default function TopNavbar() {
                             <Bell className="w-4 h-4" />
                         </button>
                         <Button
-                            onClick={handleLogin}
                             variant="default"
                             size="sm"
                             className="gap-2"
-                            disabled={loading}
+                            disabled={!isLoaded}
+                            asChild
                         >
-                            <Github className="w-4 h-4" />
-                            <span className="hidden sm:inline">{loading ? "Checking..." : "Connect GitHub"}</span>
-                            <span className="sm:hidden">{loading ? "..." : "Login"}</span>
+                            {isLoaded ? (
+                                <Link href="/sign-in">
+                                    <Github className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Connect GitHub</span>
+                                </Link>
+                            ) : (
+                                <div>
+                                    <span className="hidden sm:inline">Checking...</span>
+                                </div>
+                            )}
                         </Button>
                     </>
                 )}
