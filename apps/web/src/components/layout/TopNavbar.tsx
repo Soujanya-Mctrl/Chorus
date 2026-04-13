@@ -55,7 +55,7 @@ export default function TopNavbar() {
     };
 
     const handleLogin = () => {
-        window.location.href = `${API_BASE}/api/auth/github`;
+        window.location.href = "/sign-in";
     };
 
     const handleLogout = async () => {
