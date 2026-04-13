@@ -30,7 +30,11 @@ const fadeUp: Variants = {
 };
 
 const handleGithubLogin = () => {
-  window.location.href = `${API_BASE}/api/auth/github`;
+  window.location.href = "/sign-in";
+};
+
+const handleGithubSignUp = () => {
+  window.location.href = "/sign-up";
 };
 
 const problems = [
@@ -178,7 +182,7 @@ export default function LandingPage() {
             <Button
               size="lg"
               className="px-8 text-sm font-semibold gap-2"
-              onClick={handleGithubLogin}
+              onClick={handleGithubSignUp}
             >
               <Github className="w-4 h-4" />
               Get Started — It&apos;s Free
@@ -296,7 +300,7 @@ export default function LandingPage() {
             <Button
               size="lg"
               className="px-10 text-sm font-semibold gap-2"
-              onClick={handleGithubLogin}
+              onClick={handleGithubSignUp}
             >
               <Github className="w-4 h-4" />
               Connect GitHub & Start
