@@ -67,7 +67,7 @@ export default function Navbar() {
                         <Button
                             size="sm"
                             className="bg-orange-600 hover:bg-orange-500 text-white border-0 shadow-lg shadow-orange-500/20"
-                            onClick={() => window.location.href = `${API_BASE}/api/auth/github`}
+                            onClick={() => window.location.href = "/sign-in"}
                         >
                             Connect GitHub
                         </Button>
@@ -105,7 +105,7 @@ export default function Navbar() {
                     <div className="pt-2 border-t border-white/5">
                         <Button
                             className="w-full bg-orange-600 hover:bg-orange-500 text-white border-0"
-                            onClick={() => window.location.href = `${API_BASE}/api/auth/github`}
+                            onClick={() => window.location.href = "/sign-in"}
                         >
                             Connect GitHub
                         </Button>

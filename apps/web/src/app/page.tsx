@@ -30,7 +30,11 @@ const fadeUp: Variants = {
 };
 
 const handleGithubLogin = () => {
-  window.location.href = `${API_BASE}/api/auth/github`;
+  window.location.href = "/sign-in";
+};
+
+const handleGithubSignUp = () => {
+  window.location.href = "/sign-up";
 };
 
 const problems = [
@@ -102,12 +106,14 @@ export default function LandingPage() {
           </div>
 
           <Button
-            onClick={handleGithubLogin}
             size="sm"
             className="gap-2"
+            asChild
           >
-            <Github className="w-4 h-4" />
-            Connect GitHub
+            <Link href="/sign-in">
+              <Github className="w-4 h-4" />
+              Connect GitHub
+            </Link>
           </Button>
         </div>
       </nav>
@@ -178,10 +184,12 @@ export default function LandingPage() {
             <Button
               size="lg"
               className="px-8 text-sm font-semibold gap-2"
-              onClick={handleGithubLogin}
+              asChild
             >
-              <Github className="w-4 h-4" />
-              Get Started — It&apos;s Free
+              <Link href="/sign-up">
+                <Github className="w-4 h-4" />
+                Get Started — It&apos;s Free
+              </Link>
             </Button>
             <Button
               size="lg"
@@ -296,10 +304,12 @@ export default function LandingPage() {
             <Button
               size="lg"
               className="px-10 text-sm font-semibold gap-2"
-              onClick={handleGithubLogin}
+              asChild
             >
-              <Github className="w-4 h-4" />
-              Connect GitHub & Start
+              <Link href="/sign-up">
+                <Github className="w-4 h-4" />
+                Connect GitHub & Start
+              </Link>
             </Button>
           </motion.div>
         </div>

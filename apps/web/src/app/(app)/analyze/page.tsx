@@ -101,6 +101,15 @@ export default function AnalyzePage() {
             setAnalysisData(data);
             setAnalyzed(true);
             
+            // Save to global projects list
+            try {
+                const existingList = JSON.parse(localStorage.getItem("chorus:projects:analyzed") || "[]");
+                const filteredList = existingList.filter((p: any) => p.repo?.owner !== data.repo?.owner || p.repo?.name !== data.repo?.name);
+                localStorage.setItem("chorus:projects:analyzed", JSON.stringify([data, ...filteredList]));
+            } catch(e) {
+                console.error("Failed to save to global projects list", e);
+            }
+            
             // Fire off the architecture pipeline asynchronously
             fetchArchitectureGraph(data.repo.owner, data.repo.name);
             

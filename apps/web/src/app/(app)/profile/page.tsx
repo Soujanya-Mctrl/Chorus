@@ -11,85 +11,46 @@ interface StatItem {
     color: string;
 }
 
-interface ProfileData {
-    username: string;
-    name: string;
-    avatar: string;
-    avatarUrl?: string;
-    contributions: number;
-    mergedPRs: number;
-    repos: number;
-    stars: number;
-    stats: StatItem[];
-}
 
-const MOCK_PROFILE: ProfileData = {
-    username: "guest",
-    name: "Guest User",
-    avatar: "GU",
-    contributions: 0,
-    mergedPRs: 0,
-    repos: 0,
-    stars: 0,
-    stats: [],
-};
 
-function buildProfileFromApi(data: any): ProfileData {
-    const sp = data.skillProfile;
-    const totalContributions = sp?.contributionCount ?? 0;
-    const totalRepos = sp?.totalRepos ?? 0;
-    const totalStars = sp?.totalStars ?? 0;
-
-    return {
-        username: data.username || "user",
-        name: data.name || data.username || "User",
-        avatar: (data.name || data.username || "U").slice(0, 2).toUpperCase(),
-        avatarUrl: data.avatarUrl,
-        contributions: totalContributions,
-        mergedPRs: 0, // Placeholder
-        repos: totalRepos,
-        stars: totalStars,
-        stats: [
-            { label: "Contributions", value: String(totalContributions), icon: GitMerge, color: "text-green-400" },
-            { label: "Stars", value: String(totalStars), icon: Star, color: "text-purple-400" },
-            { label: "Repos", value: String(totalRepos), icon: Code, color: "text-cyan-400" },
-            { label: "PRs Merged", value: "0", icon: GitPullRequest, color: "text-blue-400" },
-        ],
-    };
-}
+import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
-    const [profile, setProfile] = useState<ProfileData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { isLoaded, isSignedIn, user } = useUser();
 
-    useEffect(() => {
-        async function fetchProfile() {
-            try {
-                const res = await fetch("http://localhost:3001/api/user/profile", {
-                    credentials: "include",
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setProfile(buildProfileFromApi(data));
-                } else {
-                    setProfile(MOCK_PROFILE);
-                }
-            } catch {
-                setProfile(MOCK_PROFILE);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchProfile();
-    }, []);
-
-    if (loading || !profile) {
+    if (!isLoaded) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
             </div>
         );
     }
+
+    if (!isSignedIn) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <h2 className="text-xl font-bold text-white mb-2">Connect to view profile</h2>
+                <p className="text-slate-400 text-sm mb-6 max-w-sm">
+                    Sign in with GitHub to view your developer profile, contributions, and stats.
+                </p>
+                <Button asChild className="gap-2">
+                    <Link href="/sign-in">
+                        Connect GitHub
+                    </Link>
+                </Button>
+            </div>
+        );
+    }
+
+    // Default placeholder stats while backend is disconnected
+    const stats: StatItem[] = [
+        { label: "Contributions", value: "0", icon: GitMerge, color: "text-green-400" },
+        { label: "Stars", value: "0", icon: Star, color: "text-purple-400" },
+        { label: "Repos", value: "0", icon: Code, color: "text-cyan-400" },
+        { label: "PRs Merged", value: "0", icon: GitPullRequest, color: "text-blue-400" },
+    ];
 
     return (
         <div className="relative">
@@ -104,18 +65,18 @@ export default function ProfilePage() {
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                             {/* Avatar */}
                             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-slate-900/20">
-                                {profile.avatarUrl ? (
-                                    <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full rounded-2xl object-cover" />
+                                {user.imageUrl ? (
+                                    <img src={user.imageUrl} alt={user.fullName || user.username || "User"} className="w-full h-full rounded-2xl object-cover" />
                                 ) : (
-                                    profile.avatar
+                                    (user.fullName || user.username || "U").slice(0, 2).toUpperCase()
                                 )}
                             </div>
 
                             {/* Info */}
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-1 flex-wrap">
-                                    <h1 className="text-2xl font-bold text-white">{profile.name}</h1>
-                                    <span className="text-slate-500">@{profile.username}</span>
+                                    <h1 className="text-2xl font-bold text-white">{user.fullName || user.username || "Developer"}</h1>
+                                    <span className="text-slate-500">@{user.username || "user"}</span>
                                 </div>
                                 <div className="flex items-center gap-4 mt-2">
                                     <div className="flex items-center gap-1.5 text-sm text-slate-400">
@@ -143,7 +104,7 @@ export default function ProfilePage() {
                     transition={{ delay: 0.1 }}
                     className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
                 >
-                    {profile.stats.map(({ label, value, icon: Icon, color }: StatItem, i: number) => (
+                    {stats.map(({ label, value, icon: Icon, color }: StatItem, i: number) => (
                         <Card
                             key={label}
                             className="bg-[#121212] border-white/5 p-4 text-center hover:border-orange-500/20 hover:-translate-y-1 transition duration-300"

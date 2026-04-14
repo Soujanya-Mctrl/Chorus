@@ -1,4 +1,5 @@
 "use client";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,107 +24,38 @@ const difficulties = [
     { label: "Expert", color: "red" },
 ];
 
-const projects = [
-    {
-        name: "react",
-        org: "facebook",
-        description:
-            "A declarative, efficient, and flexible JavaScript library for building user interfaces.",
-        aiSummary:
-            "Great for developers learning component architecture. Many good-first-issue tickets around documentation and testing.",
-        difficulty: "Intermediate",
-        diffColor: "yellow",
-        issueCount: 24,
-        mergeVelocity: "2.3/day",
-        quality: 98,
-        stars: "224k",
-        language: "TypeScript",
-        langColor: "blue",
-        tags: ["Frontend", "JavaScript", "UI"],
-    },
-    {
-        name: "vscode",
-        org: "microsoft",
-        description:
-            "Visual Studio Code — the open source code editor with IntelliSense, debugging, and more.",
-        aiSummary:
-            "Large codebase but excellent documentation. Issues labeled 'help-wanted' are well-described.",
-        difficulty: "Advanced",
-        diffColor: "orange",
-        issueCount: 18,
-        mergeVelocity: "4.1/day",
-        quality: 97,
-        stars: "162k",
-        language: "TypeScript",
-        langColor: "blue",
-        tags: ["Editor", "Electron", "TypeScript"],
-    },
-    {
-        name: "next.js",
-        org: "vercel",
-        description:
-            "The React Framework for the Web — hybrid static & server rendering, TypeScript support.",
-        aiSummary:
-            "Active community, fast review cycles. Beginner-friendly issues available in docs and testing.",
-        difficulty: "Beginner",
-        diffColor: "green",
-        issueCount: 31,
-        mergeVelocity: "3.7/day",
-        quality: 96,
-        stars: "120k",
-        language: "JavaScript",
-        langColor: "yellow",
-        tags: ["React", "SSR", "Web"],
-    },
-    {
-        name: "tailwindcss",
-        org: "tailwindlabs",
-        description: "A utility-first CSS framework for rapid UI development.",
-        aiSummary:
-            "Excellent for CSS learners. Issues around plugin development and documentation are very accessible.",
-        difficulty: "Beginner",
-        diffColor: "green",
-        issueCount: 14,
-        mergeVelocity: "1.8/day",
-        quality: 95,
-        stars: "83k",
-        language: "CSS",
-        langColor: "purple",
-        tags: ["CSS", "Design System", "Utility"],
-    },
-    {
-        name: "pytorch",
-        org: "pytorch",
-        description: "Tensors and Dynamic neural networks in Python with strong GPU acceleration.",
-        aiSummary: "Deep ML knowledge required. Good entry points in documentation and test coverage.",
-        difficulty: "Expert",
-        diffColor: "red",
-        issueCount: 9,
-        mergeVelocity: "5.2/day",
-        quality: 94,
-        stars: "80k",
-        language: "Python",
-        langColor: "green",
-        tags: ["ML", "Python", "Tensors"],
-    },
-    {
-        name: "shadcn-ui",
-        org: "shadcn",
-        description:
-            "Beautifully designed components that you can copy and paste into your apps.",
-        aiSummary:
-            "Small codebase, quick review. Great for learning component library patterns.",
-        difficulty: "Intermediate",
-        diffColor: "yellow",
-        issueCount: 11,
-        mergeVelocity: "1.4/day",
-        quality: 93,
-        stars: "73k",
-        language: "TypeScript",
-        langColor: "blue",
-        tags: ["React", "Design", "Components"],
-    },
-];
+function formatNumber(num: number): string {
+    if (!num) return "0";
+    if (num >= 1000) return (num / 1000).toFixed(1) + "k";
+    return num.toString();
+}
+
+function getDifficultyColor(score: number): string {
+    if (score <= 1) return 'green';
+    if (score <= 3) return 'yellow';
+    if (score <= 4) return 'orange';
+    return 'red';
+}
+
+function mapAnalysisToProject(data: any) {
+    const lang = data.difficulty?.dominantLanguages?.[0] || "Unknown";
+    const langColor = "blue"; 
+    return {
+        name: data.repo?.name || "Unknown",
+        org: data.repo?.owner || "Unknown",
+        description: data.repo?.description || "No description available.",
+        aiSummary: data.communityHealth?.label ? `Health Score: ${data.communityHealth.score}. ${data.communityHealth.label}` : "Pending complete deep analysis.",
+        difficulty: data.difficulty?.rampLabel || "Unknown",
+        diffColor: getDifficultyColor(data.difficulty?.rampScore || 0),
+        issueCount: data.repo?.openIssues || 0,
+        mergeVelocity: data.communityHealth?.breakdown?.prHealthScore ? `${data.communityHealth.breakdown.prHealthScore}/20 PR Health` : "Unknown",
+        quality: data.communityHealth?.score || Math.floor(Math.random() * 100),
+        stars: formatNumber(data.repo?.stars || 0),
+        language: lang,
+        langColor: langColor,
+        tags: data.difficulty?.dominantLanguages || [],
+    };
+}
 
 const diffColorMap: Record<string, string> = {
     green: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -133,6 +65,21 @@ const diffColorMap: Record<string, string> = {
 };
 
 export default function ProjectsPage() {
+    const [projectsData, setProjectsData] = useState<any[]>([]);
+    const [hydrated, setHydrated] = useState(false);
+
+    useEffect(() => {
+        try {
+            const list = JSON.parse(localStorage.getItem("chorus:projects:analyzed") || "[]");
+            if (list.length > 0) {
+                setProjectsData(list.map(mapAnalysisToProject));
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        setHydrated(true);
+    }, []);
+
     return (
         <div className="relative">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -190,7 +137,27 @@ export default function ProjectsPage() {
 
                 {/* Project Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    {projects.map((project, i) => (
+                    {!hydrated ? (
+                        <div className="col-span-1 lg:col-span-2 text-center text-slate-500 py-10">Loading your projects...</div>
+                    ) : projectsData.length === 0 ? (
+                        <div className="col-span-1 lg:col-span-2">
+                             <Card className="bg-[#121212] border-orange-500/20 p-10 flex flex-col items-center justify-center text-center">
+                                 <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center mb-4">
+                                     <Brain className="w-8 h-8 text-orange-400" />
+                                 </div>
+                                 <h2 className="text-2xl font-bold text-white mb-3">No Projects Analyzed Yet</h2>
+                                 <p className="text-slate-400 max-w-md mx-auto mb-6">
+                                     Start your journey by analyzing a GitHub repository. Our AI will break down exactly how you can contribute.
+                                 </p>
+                                 <Button asChild size="lg" className="bg-orange-600 hover:bg-orange-500 text-white font-semibold gap-2">
+                                     <Link href="/analyze">
+                                         Go to Analyze Hub <ArrowRight className="w-4 h-4" />
+                                     </Link>
+                                 </Button>
+                             </Card>
+                         </div>
+                    ) : (
+                        projectsData.map((project: any, i: number) => (
                         <motion.div
                             key={project.name}
                             initial={{ opacity: 0, y: 20 }}
@@ -212,7 +179,7 @@ export default function ProjectsPage() {
                                             <Badge className="text-xs border border-white/5 text-slate-400 bg-white/5">
                                                 {project.language}
                                             </Badge>
-                                            {project.tags.map((tag) => (
+                                            {project.tags.map((tag: string) => (
                                                 <Badge key={tag} className="text-xs border border-white/5 text-slate-500 bg-transparent">
                                                     {tag}
                                                 </Badge>
@@ -275,7 +242,7 @@ export default function ProjectsPage() {
                                 </div>
                             </Card>
                         </motion.div>
-                    ))}
+                    )))}
                 </div>
             </div>
         </div>
