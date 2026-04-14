@@ -35,12 +35,12 @@ const envSchema = z.object({
 
   // Frontend
   CALLBACK_URL: z.string().optional(),
-  FRONTEND_URL: z.string().default('http://localhost:3000'),
+  FRONTEND_URL: z.string().default(`${process.env.FRONTEND_URL}`),
 
   // Observability
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  CORS_ORIGINS: z.string().default('http://localhost:3000'),
+  CORS_ORIGINS: z.string().default(`${process.env.FRONTEND_URL}`),
 });
 
 const parsed = envSchema.safeParse(process.env);
