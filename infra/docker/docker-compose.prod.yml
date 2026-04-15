@@ -31,11 +31,20 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    command: >
+      /bin/sh -c '
+        if [ -z "$$REDIS_PASSWORD" ]; then
+          redis-server --appendonly yes
+        else
+          redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+        fi
+      '
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      test: ["CMD-SHELL", "/bin/sh -c 'if [ -z \"$$REDIS_PASSWORD\" ]; then redis-cli ping; else redis-cli -a \"$$REDIS_PASSWORD\" ping; fi' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
