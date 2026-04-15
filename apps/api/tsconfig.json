@@ -6,11 +6,7 @@
     "types": ["node"],
     "noEmit": true,
     "baseUrl": "./src",
-    "paths": {
-      "@chorus/shared-types": ["../../packages/shared-types/src"],
-      "@chorus/tree-sitter-utils": ["../../packages/tree-sitter-utils/src"],
-      "@chorus/graph-utils": ["../../packages/graph-utils/src"]
-    }
+
   },
   "include": ["src/**/*.ts"]
 }
