@@ -33,14 +33,7 @@ services:
     restart: always
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secret}
-    command: >
-      /bin/sh -c '
-        if [ -z "$$REDIS_PASSWORD" ]; then
-          redis-server --appendonly yes
-        else
-          redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
-        fi
-      '
+    command: ["/bin/sh", "-c", 'if [ -z "$$REDIS_PASSWORD" ]; then redis-server --appendonly yes; else redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi']
     volumes:
       - redis-data:/data
     healthcheck:
