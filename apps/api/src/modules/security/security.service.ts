@@ -5,7 +5,7 @@ import { scanSecurityQueue } from '../../queue/scanSecurity.queue';
 
 export class SecurityService {
   async getReport(repoId: string): Promise<SecurityReport | null> {
-    const report = await SecurityReportModel.findOne({ repoId }).sort({ generatedAt: -1 });
+    const report = await SecurityReportModel.findOne({ repoId });
     return report ? (report.toObject() as unknown as SecurityReport) : null;
   }
 

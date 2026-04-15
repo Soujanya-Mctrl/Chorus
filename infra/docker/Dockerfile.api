@@ -1,41 +1,37 @@
-# ── Stage 1: Builder ─────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
+
+FROM base AS builder
+WORKDIR /app
+RUN apk add --no-cache libc6-compat python3 make g++
+RUN npm install -g turbo
+COPY . .
+# Prune the workspace for the API container
+RUN turbo prune @chorus/api --docker
+
+FROM base AS installer
+RUN apk add --no-cache libc6-compat python3 make g++
 WORKDIR /app
 
-# Install build tools needed for native modules (tree-sitter, etc.)
-RUN apk add --no-cache python3 make g++
-
-# Copy monorepo root config files
-COPY package.json package-lock.json* turbo.json tsconfig.base.json ./
-
-# Copy shared packages first (they're dependencies of the apps)
-COPY packages/ ./packages/
-
-# Copy the API app
-COPY apps/api/ ./apps/api/
-
-# Install all workspace dependencies
+# First install dependencies
+COPY --from=builder /app/out/json/ .
+COPY --from=builder /app/out/package-lock.json ./package-lock.json
 RUN npm ci
 
-# Build shared packages first, then the API
-# Uses tsconfig.prod.json which emits JS to dist/
-RUN npm run build --workspace=packages/shared-types 2>/dev/null || true
-RUN npm run build --workspace=packages/graph-utils 2>/dev/null || true
-RUN npm run build --workspace=packages/tree-sitter-utils 2>/dev/null || true
-RUN npm run build --workspace=apps/api
+# Then build the project
+COPY --from=builder /app/out/full/ .
+COPY turbo.json turbo.json
+COPY tsconfig.base.json tsconfig.base.json
+# Build the target app and its internal graph dependencies properly
+RUN npx turbo run build --filter=@chorus/api...
 
-# ── Stage 2: Runtime ─────────────────────────────
-FROM node:20-alpine
+FROM base AS runner
 WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 expressjs
+USER expressjs
 
-# Only copy what's needed to run
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/package.json ./
+# Copy the entire built pruned monorepo workspace containing the app
+COPY --from=installer --chown=expressjs:nodejs /app .
 
-# Expose API port
 EXPOSE 3001
-
-# Default: run the API server
-# For the migration service, override with: node dist/db/migrate.js
-CMD ["node", "dist/server.js"]
+CMD ["node", "apps/api/dist/server.js"]

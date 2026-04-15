@@ -10,7 +10,7 @@ export async function syncGraph(
   commitSha: string,
 ): Promise<{ nodesChanged: number; edgesChanged: number }> {
   // Get current graph
-  const current = await GraphModel.findOne({ repoId, level: 'file' }).sort({ generatedAt: -1 });
+  const current = await GraphModel.findOne({ repoId, level: 'file' });
 
   if (!current) {
     // First graph — save directly

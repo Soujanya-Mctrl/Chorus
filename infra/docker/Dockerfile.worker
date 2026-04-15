@@ -1,29 +1,31 @@
-# ── Stage 1: Builder ─────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
+
+FROM base AS builder
 WORKDIR /app
+RUN apk add --no-cache libc6-compat python3 make g++
+RUN npm install -g turbo
+COPY . .
+RUN turbo prune @chorus/worker --docker
 
-RUN apk add --no-cache python3 make g++
-
-COPY package.json package-lock.json* turbo.json tsconfig.base.json ./
-COPY packages/ ./packages/
-COPY apps/worker/ ./apps/worker/
-
+FROM base AS installer
+RUN apk add --no-cache libc6-compat python3 make g++ git
+WORKDIR /app
+COPY --from=builder /app/out/json/ .
+COPY --from=builder /app/out/package-lock.json ./package-lock.json
 RUN npm ci
+COPY --from=builder /app/out/full/ .
+COPY turbo.json turbo.json
+COPY tsconfig.base.json tsconfig.base.json
+RUN npx turbo run build --filter=@chorus/worker...
 
-RUN npm run build --workspace=packages/shared-types 2>/dev/null || true
-RUN npm run build --workspace=packages/graph-utils 2>/dev/null || true
-RUN npm run build --workspace=packages/tree-sitter-utils 2>/dev/null || true
-RUN npm run build --workspace=apps/worker
-
-# ── Stage 2: Runtime ─────────────────────────────
-FROM node:20-alpine
+FROM base AS runner
 WORKDIR /app
-
-# git is needed for isomorphic-git (repo cloning)
+# git is required for isomorphic-git to successfully clone repositories
 RUN apk add --no-cache git
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 workerjs
+USER workerjs
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/worker/dist ./dist
-COPY --from=builder /app/apps/worker/package.json ./
+COPY --from=installer --chown=workerjs:nodejs /app .
 
-CMD ["node", "dist/worker.js"]
+CMD ["node", "apps/worker/dist/worker.js"]

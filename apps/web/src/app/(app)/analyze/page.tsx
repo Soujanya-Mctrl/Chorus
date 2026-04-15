@@ -92,7 +92,7 @@ export default function AnalyzePage() {
         if (!url) return;
         setLoading(true);
         try {
-            const res = await fetch("http://localhost:3001/api/repo/analyze", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/repo/analyze`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ url, githubUsername: "vanshdeo" }),
@@ -125,7 +125,7 @@ export default function AnalyzePage() {
         setArchData(null);
         try {
             const encodeId = encodeURIComponent(`${owner}/${repoName}`);
-            const res = await fetch(`http://localhost:3001/api/repo/${encodeId}/graph?level=architecture`);
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/repo/${encodeId}/graph?level=architecture`);
             if (res.ok) {
                 const arch = await res.json();
                 setArchData(arch);

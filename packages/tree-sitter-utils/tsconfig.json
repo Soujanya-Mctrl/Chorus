@@ -2,12 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "types": ["node"],
-    "noEmit": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@chorus/shared-types": ["../../shared-types/src"]
-    }
+    "rootDir": "./src",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"]
 }

@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # ── PostgreSQL + pgvector ────────────────────────
@@ -23,11 +22,13 @@ services:
     image: redis:7-alpine
     ports:
       - '6379:6379'
-    command: redis-server --appendonly yes
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    command: ["/bin/sh", "-c", 'if [ -z "$$REDIS_PASSWORD" ]; then redis-server --appendonly yes; else redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi']
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD-SHELL", "/bin/sh -c 'if [ -z \"$$REDIS_PASSWORD\" ]; then redis-cli ping; else redis-cli -a \"$$REDIS_PASSWORD\" ping; fi' || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -37,7 +38,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
-    command: node dist/db/migrate.js
+    command: node apps/api/dist/db/migrate.js
     environment:
       DATABASE_URL: postgresql://chorus:chorus@postgres:5432/chorus
     depends_on:
@@ -99,7 +100,7 @@ services:
     ports:
       - '3000:3000'
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_API_URL: http://3.106.34.37:3001
       NODE_ENV: production
     depends_on:
       - api
