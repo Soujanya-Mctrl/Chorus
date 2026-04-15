@@ -26,9 +26,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/worker/dist ./dist
 COPY --from=builder /app/apps/worker/package.json ./
 
-# Copy built shared packages (workspace symlinks in node_modules point to these)
-COPY --from=builder /app/packages/shared-types ./packages/shared-types
-COPY --from=builder /app/packages/graph-utils ./packages/graph-utils
-COPY --from=builder /app/packages/tree-sitter-utils ./packages/tree-sitter-utils
+# Overwrite broken workspace symlinks in node_modules with actual built packages
+COPY --from=builder /app/packages/shared-types ./node_modules/@chorus/shared-types
+COPY --from=builder /app/packages/graph-utils ./node_modules/@chorus/graph-utils
+COPY --from=builder /app/packages/tree-sitter-utils ./node_modules/@chorus/tree-sitter-utils
 
 CMD ["node", "dist/worker.js"]
