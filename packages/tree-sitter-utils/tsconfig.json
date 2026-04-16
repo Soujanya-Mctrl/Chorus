@@ -5,7 +5,10 @@
     "rootDir": "./src",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@chorus/*": ["../*"]
+    }
   },
   "include": ["src/**/*.ts"]
 }
