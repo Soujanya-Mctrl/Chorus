@@ -15,7 +15,7 @@
     "sourceMap": true,
     "incremental": true,
     "paths": {
-      "@chorus/shared-types": ["./packages/shared-types/src"]
+      "@chorus/shared-types": ["../shared-types/src"]
     }  },
   "exclude": ["node_modules", "dist", ".next", "coverage"]
 }

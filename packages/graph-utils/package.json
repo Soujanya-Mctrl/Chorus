@@ -11,8 +11,8 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "type-check": "tsc --noEmit",
+    "build": "tsc --project tsconfig.prod.json",
+    "type-check": "tsc --project tsconfig.prod.json --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
