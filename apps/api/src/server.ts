@@ -45,7 +45,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 // ── Start ──
 async function start() {
   await connectDatabase();
-  app.listen(process.env.PORT || 3001, () => {
+  app.listen(Number(process.env.PORT) || 3001, '0.0.0.0', () => {
     logger.info(`Chorus API listening on port ${process.env.PORT || 3001}`);
   });
 }
