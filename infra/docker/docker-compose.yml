@@ -38,7 +38,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
-    command: node apps/api/dist/db/migrate.js
+    command: node dist/db/migrate.js
     environment:
       DATABASE_URL: postgresql://chorus:chorus@postgres:5432/chorus
     depends_on:
