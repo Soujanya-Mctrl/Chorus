@@ -17,7 +17,14 @@ COPY --from=builder /app/out/full/ .
 COPY --from=builder /app/turbo.json turbo.json
 COPY --from=builder /app/tsconfig.base.json tsconfig.base.json
 RUN npx turbo run build --filter=@chorus/shared-types
-RUN npx turbo run build --filter=@chorus/worker...
+# install dependencies
+RUN npm install
+
+# build shared-types manually
+RUN cd packages/shared-types && npm run build
+
+# build worker manually
+RUN cd apps/worker && npm run build
 
 FROM base AS runner
 WORKDIR /app

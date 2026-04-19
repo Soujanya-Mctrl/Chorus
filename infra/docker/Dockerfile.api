@@ -23,7 +23,14 @@ COPY turbo.json turbo.json
 COPY tsconfig.base.json tsconfig.base.json
 RUN npx turbo run build --filter=@chorus/shared-types
 # Build the target app and its internal graph dependencies properly
-RUN npx turbo run build --filter=@chorus/api...
+# install dependencies
+RUN npm install
+
+# build shared-types manually
+RUN cd packages/shared-types && npm run build
+
+# build api manually
+RUN cd apps/api && npm run build
 
 FROM base AS runner
 WORKDIR /app
