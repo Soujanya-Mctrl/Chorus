@@ -5,6 +5,10 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@chorus/shared-types": ["../../packages/shared-types/src"]
+    }
   },
   "include": ["src/**/*.ts"]
 }
