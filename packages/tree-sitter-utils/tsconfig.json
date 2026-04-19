@@ -7,7 +7,7 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@chorus/shared-types": ["../shared-types/src"]
+      "@chorus/shared-types": ["../../shared-types/src"]
     }
   },
   "include": ["src/**/*.ts"]
