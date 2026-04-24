@@ -96,7 +96,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="bg-[#0a0a0a] min-h-screen">
+    <div className="bg-[#0a0a0a] min-h-screen overflow-x-hidden">
       {/* STANDALONE NAVBAR */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
@@ -135,11 +135,11 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO */}
-      <section className="relative pt-20 pb-16 m-35">
+      <section className="relative pt-24 pb-14 sm:pt-24 sm:pb-16">
         {/* Animated gradient blob */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[300px] rounded-full blur-3xl"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[220px] sm:w-[400px] sm:h-[300px] rounded-full blur-3xl"
             style={{ background: 'radial-gradient(ellipse at center, rgba(249,115,22,0.2) 0%, rgba(249,115,22,0.05) 50%, transparent 70%)' }}
             animate={{
               scale: [1, 1.15, 1],
@@ -171,7 +171,7 @@ export default function LandingPage() {
             animate="visible"
             variants={fadeUp}
             custom={1}
-            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5 tracking-tight"
+            className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.08] mb-4 sm:mb-5 tracking-tight px-1"
           >
             Your open source journey,{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500">
@@ -184,7 +184,7 @@ export default function LandingPage() {
             animate="visible"
             variants={fadeUp}
             custom={2}
-            className="text-base text-slate-300 max-w-lg mx-auto mb-10 leading-relaxed"
+            className="text-sm sm:text-base text-slate-300 max-w-lg mx-auto mb-8 sm:mb-10 leading-relaxed px-2"
           >
             Connect your GitHub, discover projects matched to your skill level,
             find the perfect issues, and dramatically accelerate your workflow.
@@ -195,11 +195,11 @@ export default function LandingPage() {
             animate="visible"
             variants={fadeUp}
             custom={3}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 max-w-sm sm:max-w-none mx-auto"
           >
             <Button
               size="lg"
-              className="px-8 text-sm font-semibold gap-2"
+              className="w-full sm:w-auto px-8 text-sm font-semibold gap-2"
               asChild
             >
               <Link href="/sign-up">
@@ -210,7 +210,7 @@ export default function LandingPage() {
             <Button
               size="lg"
               variant="outline"
-              className="px-6 text-sm border-white/35 text-white bg-white/5 hover:bg-white/10 hover:border-white/60"
+              className="w-full sm:w-auto px-6 text-sm border-white/35 text-white bg-white/5 hover:bg-white/10 hover:border-white/60"
               asChild
             >
               <a href="#how-it-works">
@@ -222,27 +222,27 @@ export default function LandingPage() {
       </section>
 
       {/* PROBLEM SECTION */}
-      <section className="py-16 border-t border-white/5 m-35">
+      <section className="py-14 sm:py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="text-center mb-10"
+            className="text-center mb-8 sm:mb-10"
           >
             <Badge className="mb-3 bg-orange-500/10 text-orange-400 border-orange-500/20 rounded-[3px] text-xs">
               The Problem
             </Badge>
-            <h2 className="text-3xl font-bold text-white mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
               Open source is{" "}
               <span className="text-orange-400">broken for beginners</span>
             </h2>
-            <p className="text-slate-300 text-sm max-w-md mx-auto">
+            <p className="text-slate-300 text-sm max-w-md mx-auto px-2">
               Most developers want to contribute, but the experience is overwhelming, unstructured, and directionless.
             </p>
           </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
             {problems.map(({ icon: Icon, title, desc }, i) => (
               <motion.div
                 key={i}
@@ -251,7 +251,7 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.4 }}
               >
-                <Card className="bg-[#111] border-white/5 p-6 h-full hover:border-orange-500/20 duration-200 transition-all rounded-[6px]">
+                <Card className="bg-[#111] border-white/5 p-5 sm:p-6 h-full hover:border-orange-500/20 duration-200 transition-all rounded-[6px]">
                   <div className="w-10 h-10 rounded-[4px] bg-orange-500/10 flex items-center justify-center mb-4">
                     <Icon className="w-5 h-5 text-orange-400" />
                   </div>
@@ -265,23 +265,23 @@ export default function LandingPage() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section id="how-it-works" className="py-16 border-t border-white/5 m-35">
+      <section id="how-it-works" className="py-14 sm:py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-10"
+            className="text-center mb-8 sm:mb-10"
           >
             <Badge className="mb-3 bg-orange-500/10 text-orange-400 border-orange-500/20 rounded-[3px] text-xs">
               How It Works
             </Badge>
-            <h2 className="text-3xl font-bold text-white mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
               Four steps to{" "}
               <span className="text-orange-400">making an impact</span>
             </h2>
           </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {howItWorks.map(({ step, title, desc }, i) => (
               <motion.div
                 key={i}
@@ -290,7 +290,7 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.4 }}
               >
-                <Card className="bg-[#111] border-white/5 p-6 h-full hover:border-orange-500/20 duration-200 transition-all rounded-[6px]">
+                <Card className="bg-[#111] border-white/5 p-5 sm:p-6 h-full hover:border-orange-500/20 duration-200 transition-all rounded-[6px]">
                   <div className="text-4xl font-black text-orange-500/15 mb-4 leading-none">{step}</div>
                   <h3 className="text-base font-semibold text-white mb-2">{title}</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
@@ -302,24 +302,24 @@ export default function LandingPage() {
       </section>
 
       {/* CTA BANNER */}
-      <section className="py-16 border-t border-white/5 m-50">
+      <section className="py-14 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="relative rounded-[6px] bg-[#111] border border-orange-500/15 p-12"
+            className="relative rounded-[6px] bg-[#111] border border-orange-500/15 p-6 sm:p-12"
           >
-            <h2 className="text-3xl font-bold text-white mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
               Ready to accelerate your{" "}
               <span className="text-orange-400">journey?</span>
             </h2>
-            <p className="text-slate-300 text-sm mb-8 max-w-md mx-auto">
+            <p className="text-slate-300 text-sm mb-6 sm:mb-8 max-w-md mx-auto px-1">
               Join 12,400+ developers who are seamlessly discovering and landing impactful PRs. Connect your GitHub and start in under a minute.
             </p>
             <Button
               size="lg"
-              className="px-10 text-sm font-semibold gap-2"
+              className="w-full sm:w-auto px-10 text-sm font-semibold gap-2"
               asChild
             >
               <Link href="/sign-up">
@@ -332,9 +332,9 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/5 pt-16 pb-8">
+      <footer className="pt-16 pb-8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-6 h-6 rounded-[3px] bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center">
@@ -364,7 +364,7 @@ export default function LandingPage() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
             <p className="text-[11px] text-slate-600">© 2025 Chorus. Built for developers, by developers.</p>
             <div className="flex items-center gap-4">
               <a href="#" className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors">Privacy</a>
