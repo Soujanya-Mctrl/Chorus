@@ -60,6 +60,48 @@ function formatNumber(num: number): string {
     return num.toString();
 }
 
+function buildPurposeText(analysisData: any): string {
+    const repo = analysisData?.repo;
+    const difficulty = analysisData?.difficulty;
+
+    if (repo?.description) {
+        return repo.description;
+    }
+
+    const languages = difficulty?.dominantLanguages?.slice(0, 3) ?? [];
+    const languageText =
+        languages.length > 0 ? ` It appears to be built primarily with ${languages.join(", ")}.` : "";
+
+    return `${repo?.owner}/${repo?.name} is an open-source repository on GitHub.${languageText}`;
+}
+
+function buildLoreText(analysisData: any): string {
+    const repo = analysisData?.repo;
+    const communityHealth = analysisData?.communityHealth;
+    const difficulty = analysisData?.difficulty;
+
+    const parts: string[] = [];
+
+    if (repo?.owner && repo?.name) {
+        parts.push(`${repo.owner}/${repo.name} currently has ${formatNumber(repo.stars)} stars, ${formatNumber(repo.forks)} forks, and ${formatNumber(repo.openIssues)} open issues.`);
+    }
+
+    if (communityHealth?.label && typeof communityHealth?.score === "number") {
+        parts.push(`Its community health is rated ${communityHealth.label} (${communityHealth.score}/100), based on issue responsiveness, recent activity, and pull request health.`);
+    }
+
+    if (difficulty?.rampLabel) {
+        const knownLanguages = difficulty?.userKnownLanguages?.length ?? 0;
+        parts.push(`For you, the current contribution ramp is ${difficulty.rampLabel} with an estimated familiarity of ${difficulty.familiarityPercent ?? 0}%.${knownLanguages > 0 ? ` You already overlap with ${knownLanguages} of the repo's dominant languages.` : ""}`);
+    }
+
+    if (parts.length === 0) {
+        return "No grounded repository summary is available yet. Re-run analysis after the repository metadata finishes loading.";
+    }
+
+    return parts.join(" ");
+}
+
 export default function AnalyzePage() {
     const router = useRouter();
     const params = useParams<{ repo?: string[] }>();
@@ -333,7 +375,7 @@ export default function AnalyzePage() {
                                         <Brain className="w-4 h-4 text-orange-400" /> Purpose
                                     </h3>
                                     <p className="text-slate-400 text-sm leading-relaxed">
-                                        {analysisData.repo.description ?? "This repository enables advanced features for its contributors. Full deep-dive analysis is currently processing through the RAG pipeline!"}
+                                        {buildPurposeText(analysisData)}
                                     </p>
                                 </Card>
 
@@ -343,7 +385,7 @@ export default function AnalyzePage() {
                                         <BookOpen className="w-4 h-4 text-orange-400" /> Project Lore
                                     </h3>
                                     <p className="text-slate-400 text-sm leading-relaxed">
-                                        This project was established by {analysisData.repo.owner}. Detailed semantic lore loading via AST graph builder...
+                                        {buildLoreText(analysisData)}
                                     </p>
                                 </Card>
 
