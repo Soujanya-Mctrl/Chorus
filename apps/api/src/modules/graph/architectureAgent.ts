@@ -3,6 +3,241 @@ import { logger } from "../../observability/logger";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_MODEL = "gemini-2.5-flash";
+const IGNORED_DIRS = new Set(["node_modules", "vendor", "dist", "build", ".next", "coverage", ".git"]);
+
+type FallbackNode = {
+    id: string;
+    label: string;
+    type: "cluster" | "module" | "config" | "component" | "service" | "function";
+    description: string;
+    layer: "ui" | "api" | "service" | "domain" | "data" | "infra" | "config";
+    importance: number;
+    complexity: number;
+    size: number;
+    tags: string[];
+    parentId: string | null;
+    children: string[];
+    isExpandable: boolean;
+    defaultExpanded: boolean;
+    depth: number;
+    childCount: number;
+    visualHint: "folder-collapsed" | "file-collapsed" | "leaf-node";
+};
+
+type FallbackEdge = {
+    source: string;
+    target: string;
+    relationship: "depends_on" | "calls" | "configures";
+    strength: number;
+    direction: "forward";
+    visibleAtDepth: number;
+};
+
+function toId(prefix: string, value: string): string {
+    return `${prefix}_${value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
+}
+
+function inferLayer(segment: string): FallbackNode["layer"] {
+    const lower = segment.toLowerCase();
+    if (["web", "ui", "app", "components", "pages"].some((part) => lower.includes(part))) return "ui";
+    if (["api", "server", "routes", "controllers", "webhooks"].some((part) => lower.includes(part))) return "api";
+    if (["db", "data", "schema", "models", "cache"].some((part) => lower.includes(part))) return "data";
+    if (["infra", "docker", "deploy", "scripts"].some((part) => lower.includes(part))) return "infra";
+    if (["config", "env", "settings"].some((part) => lower.includes(part))) return "config";
+    if (["service", "worker", "jobs", "queue", "rag", "graph"].some((part) => lower.includes(part))) return "service";
+    return "domain";
+}
+
+function inferNodeType(segment: string, depth: number): FallbackNode["type"] {
+    const lower = segment.toLowerCase();
+    if (depth === 0) return "cluster";
+    if (["config", "env", "json", "yaml", "yml"].some((part) => lower.includes(part))) return "config";
+    if (["component", "page", "layout"].some((part) => lower.includes(part))) return "component";
+    if (["service", "worker", "job", "queue", "graph", "rag"].some((part) => lower.includes(part))) return "service";
+    if (depth >= 2) return "function";
+    return "module";
+}
+
+function buildFallbackArchitectureGraph(owner: string, repoName: string, filteredPaths: string[]) {
+    const topGroups = new Map<string, string[]>();
+
+    for (const path of filteredPaths) {
+        const parts = path.split("/").filter(Boolean);
+        if (parts.length === 0) continue;
+        const top = parts[0];
+        const group = topGroups.get(top) ?? [];
+        group.push(path);
+        topGroups.set(top, group);
+    }
+
+    const sortedGroups = Array.from(topGroups.entries())
+        .sort((a, b) => b[1].length - a[1].length)
+        .slice(0, 6);
+
+    const nodes: FallbackNode[] = [];
+    const edges: FallbackEdge[] = [];
+    const rootNodes: string[] = [];
+
+    for (const [groupName, groupPaths] of sortedGroups) {
+        const clusterId = toId("cluster", groupName);
+        rootNodes.push(clusterId);
+
+        const clusterChildren: string[] = [];
+        const secondLevelGroups = new Map<string, string[]>();
+
+        for (const path of groupPaths.slice(0, 20)) {
+            const parts = path.split("/").filter(Boolean);
+            const second = parts[1] ?? parts[0];
+            const list = secondLevelGroups.get(second) ?? [];
+            list.push(path);
+            secondLevelGroups.set(second, list);
+        }
+
+        nodes.push({
+            id: clusterId,
+            label: groupName,
+            type: "cluster",
+            description: `${groupName} is a top-level area in ${owner}/${repoName} containing ${groupPaths.length} relevant files.`,
+            layer: inferLayer(groupName),
+            importance: 0.9,
+            complexity: Math.min(1, 0.3 + groupPaths.length / 40),
+            size: Math.min(10, Math.max(4, Math.round(groupPaths.length / 5))),
+            tags: [groupName, "top-level"],
+            parentId: null,
+            children: clusterChildren,
+            isExpandable: true,
+            defaultExpanded: false,
+            depth: 0,
+            childCount: 0,
+            visualHint: "folder-collapsed",
+        });
+
+        const moduleEntries = Array.from(secondLevelGroups.entries())
+            .sort((a, b) => b[1].length - a[1].length)
+            .slice(0, 4);
+
+        for (const [moduleName, modulePaths] of moduleEntries) {
+            const moduleId = toId("mod", `${groupName}_${moduleName}`);
+            clusterChildren.push(moduleId);
+
+            const fileChildren: string[] = [];
+            nodes.push({
+                id: moduleId,
+                label: moduleName,
+                type: inferNodeType(moduleName, 1),
+                description: `${moduleName} groups ${modulePaths.length} files under ${groupName}.`,
+                layer: inferLayer(moduleName),
+                importance: 0.7,
+                complexity: Math.min(1, 0.25 + modulePaths.length / 20),
+                size: Math.min(8, Math.max(3, Math.round(modulePaths.length / 3))),
+                tags: [groupName, moduleName],
+                parentId: clusterId,
+                children: fileChildren,
+                isExpandable: true,
+                defaultExpanded: false,
+                depth: 1,
+                childCount: 0,
+                visualHint: "folder-collapsed",
+            });
+
+            edges.push({
+                source: clusterId,
+                target: moduleId,
+                relationship: "depends_on",
+                strength: 0.7,
+                direction: "forward",
+                visibleAtDepth: 1,
+            });
+
+            for (const filePath of modulePaths.slice(0, 2)) {
+                const fileName = filePath.split("/").pop() || filePath;
+                const fileId = toId("file", filePath);
+                fileChildren.push(fileId);
+
+                nodes.push({
+                    id: fileId,
+                    label: fileName,
+                    type: inferNodeType(fileName, 2),
+                    description: `${fileName} is one of the representative files inside ${moduleName}.`,
+                    layer: inferLayer(fileName),
+                    importance: 0.5,
+                    complexity: 0.3,
+                    size: 3,
+                    tags: [fileName],
+                    parentId: moduleId,
+                    children: [],
+                    isExpandable: false,
+                    defaultExpanded: false,
+                    depth: 2,
+                    childCount: 0,
+                    visualHint: "leaf-node",
+                });
+
+                edges.push({
+                    source: moduleId,
+                    target: fileId,
+                    relationship: "calls",
+                    strength: 0.5,
+                    direction: "forward",
+                    visibleAtDepth: 2,
+                });
+            }
+        }
+    }
+
+    for (let i = 0; i < rootNodes.length - 1; i++) {
+        edges.push({
+            source: rootNodes[i],
+            target: rootNodes[i + 1],
+            relationship: "depends_on",
+            strength: 0.45,
+            direction: "forward",
+            visibleAtDepth: 0,
+        });
+    }
+
+    for (const node of nodes) {
+        node.childCount = node.children.length;
+        node.isExpandable = node.children.length > 0;
+        node.visualHint = node.children.length > 0 ? "folder-collapsed" : "leaf-node";
+    }
+
+    return {
+        repository: `${owner}/${repoName}`,
+        summary: `Fallback architecture map generated from repository structure for ${owner}/${repoName}.`,
+        architecturePattern: "workspace-monorepo",
+        systemType: "software-repository",
+        complexityScore: Math.min(10, Math.max(3, Math.round(filteredPaths.length / 25))),
+        progressiveStructure: {
+            maxDepth: 2,
+            rootNodes,
+            defaultViewDepth: 0,
+            expansionStrategy: "click-to-expand",
+            recommendedStartNodes: rootNodes.slice(0, 2),
+        },
+        nodes,
+        edges,
+        visualization: {
+            initialView: "clusters-only",
+            cameraFocus: rootNodes[0] ?? "",
+            layoutStyle: "hierarchical-tree",
+            expansionAnimation: "zoom-and-unfold",
+            collapseAnimation: "fold-and-zoom-out",
+            expansionDuration: 350,
+            layoutEngine: "force-directed-hierarchical",
+        },
+        tags: ["fallback", "structure-based", owner, repoName],
+        metadata: {
+            totalNodes: nodes.length,
+            visibleNodesAtStart: rootNodes.length,
+            maxDepthAvailable: 2,
+            analysisConfidence: 0.62,
+            warnings: [
+                "Generated from repository structure because AI architecture synthesis was unavailable.",
+            ],
+        },
+    };
+}
 
 export async function generateArchitectureGraph(
     owner: string,
@@ -32,7 +267,6 @@ export async function generateArchitectureGraph(
 
         // 3. Filter paths to prevent massive token usage
         // Let's keep files up to a certain depth and ignore common massive directories
-        const IGNORED_DIRS = new Set(["node_modules", "vendor", "dist", "build", ".next", "coverage", ".git"]);
         const filteredPaths = allPaths.filter(p => {
             const parts = p.split('/');
             if (parts.some(part => IGNORED_DIRS.has(part))) return false;
@@ -139,7 +373,8 @@ ${finalPaths}
 
         const geminiApiKey = process.env.GEMINI_API_KEY;
         if (!geminiApiKey) {
-            throw new Error("Missing GEMINI_API_KEY");
+            logger.warn("Missing GEMINI_API_KEY, using fallback architecture graph");
+            return buildFallbackArchitectureGraph(owner, repoName, filteredPaths);
         }
 
         const url = `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent`;
@@ -184,12 +419,35 @@ ${finalPaths}
             parsedData = JSON.parse(outputJsonStr);
         } catch (e) {
             console.error("Gemini invalid JSON payload", outputJsonStr);
-            throw new Error("Generated content was not valid JSON");
+            logger.warn("Gemini returned invalid JSON, using fallback architecture graph");
+            return buildFallbackArchitectureGraph(owner, repoName, filteredPaths);
         }
 
         return parsedData;
     } catch (error) {
-        logger.error({ error }, "Error generating architecture graph");
-        throw error;
+        logger.error({ error }, "Error generating architecture graph, using fallback");
+        try {
+            const octokit = new Octokit({
+                auth: githubToken || process.env.GITHUB_TOKEN,
+            });
+            const { data: repoData } = await octokit.repos.get({ owner, repo: repoName });
+            const { data: treeData } = await octokit.git.getTree({
+                owner,
+                repo: repoName,
+                tree_sha: repoData.default_branch,
+                recursive: "1",
+            });
+            const allPaths = (treeData.tree || [])
+                .filter((item) => item.type === "blob" || item.type === "tree")
+                .map((item) => item.path || "");
+            const filteredPaths = allPaths.filter((p) => {
+                const parts = p.split('/');
+                return !parts.some((part) => IGNORED_DIRS.has(part)) && parts.length <= 4;
+            });
+            return buildFallbackArchitectureGraph(owner, repoName, filteredPaths);
+        } catch (fallbackError) {
+            logger.error({ fallbackError }, "Fallback architecture generation failed");
+            throw fallbackError;
+        }
     }
 }
