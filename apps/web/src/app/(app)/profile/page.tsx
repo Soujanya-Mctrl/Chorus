@@ -71,22 +71,25 @@ export default function ProfilePage() {
     const [ghLoading, setGhLoading] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
 
-    useEffect(() => {
+    const loadStats = async () => {
         if (!user?.username) return;
+        localStorage.removeItem("chorus:github:stats");
         setGhLoading(true);
-        fetchGitHubStats(user.username)
-            .then(setGhStats)
-            .catch(console.error)
-            .finally(() => setGhLoading(false));
-    }, [user?.username]);
+        try {
+            const stats = await fetchGitHubStats(user.username);
+            setGhStats(stats);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setGhLoading(false);
+        }
+    };
 
-    if (!isLoaded) {
-        return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="w-8 h-8 text-white/40 animate-spin" />
-            </div>
-        );
-    }
+    useEffect(() => {
+        if (isLoaded && isSignedIn) loadStats();
+    }, [isLoaded, isSignedIn, user?.username]);
+
+    if (!isLoaded) return <ProfileSkeleton />;
 
     if (!isSignedIn) {
         return (
@@ -171,9 +174,14 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        <button onClick={() => setEditOpen(true)} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-white/60 hover:text-white transition border border-white/[0.06]">
-                            <Settings className="w-3.5 h-3.5" /> Edit
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setEditOpen(true)}
+                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-white/60 hover:text-white transition border border-white/[0.06]"
+                            >
+                                <Settings className="w-3.5 h-3.5" /> Edit
+                            </button>
+                        </div>
                     </div>
                 </GlassCard>
 
@@ -329,7 +337,29 @@ export default function ProfilePage() {
             </div>
 
             {/* Edit Modal */}
-            <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} />
+            <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} ghStats={ghStats} />
+        </div>
+    );
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────
+
+function ProfileSkeleton() {
+    return (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-5 animate-pulse">
+            <div className="h-32 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-24 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
+                ))}
+            </div>
+            <div className="h-64 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
+            <div className="h-48 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-32 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
+                ))}
+            </div>
         </div>
     );
 }

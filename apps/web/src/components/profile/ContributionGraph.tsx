@@ -48,19 +48,6 @@ export default function ContributionGraph({ username, joinYear }: Props) {
     const fetchData = useCallback((year: number | "last") => {
         if (!username) return;
 
-        const cacheKey = `chorus:contributions:${username}:${year}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-            try {
-                const { data: cachedData, ts } = JSON.parse(cached);
-                if (Date.now() - ts < 30 * 60 * 1000) {
-                    setData(cachedData);
-                    setLoading(false);
-                    return;
-                }
-            } catch { /* ignore */ }
-        }
-
         setLoading(true);
         setError(false);
 
@@ -71,9 +58,6 @@ export default function ContributionGraph({ username, joinYear }: Props) {
             })
             .then((json) => {
                 setData(json);
-                try {
-                    localStorage.setItem(cacheKey, JSON.stringify({ data: json, ts: Date.now() }));
-                } catch { /* ignore */ }
             })
             .catch(() => setError(true))
             .finally(() => setLoading(false));
