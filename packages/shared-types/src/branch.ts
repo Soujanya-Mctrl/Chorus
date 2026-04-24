@@ -1,4 +1,5 @@
 // ── Branch Context Types ─────────────────────────
+export const BRANCH_RUNTIME = true;
 
 export interface BranchContext {
   repoId: string;

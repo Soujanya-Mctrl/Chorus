@@ -24,7 +24,8 @@ import { sql } from 'drizzle-orm';
  */
 export const vector = customType<{ data: number[]; config: { dimensions: number } }>({
   dataType(config) {
-    return `vector(${config?.dimensions ?? 768})`;
+    // Fallback to jsonb if pgvector is not available
+    return `jsonb`;
   },
   toDriver(value: number[]): string {
     return `[${value.join(',')}]`;

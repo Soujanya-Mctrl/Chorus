@@ -1,4 +1,5 @@
-// ── Repository Types ─────────────────────────────
+// ── Repository Types ──────────────────────────────
+export const REPO_RUNTIME = true;
 
 export interface Repository {
   id: string;

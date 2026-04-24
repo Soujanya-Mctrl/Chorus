@@ -38,8 +38,11 @@ export class RepoService {
     userId?: string,
     githubUsername?: string,
   ): Promise<RepoAnalysisResult> {
-    const [owner, name] = repoUrl.replace('https://github.com/', '').split('/');
+    console.log(`[RepoService] Analyzing repo: ${owner}/${name}`);
     const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+      console.warn('[RepoService] GITHUB_TOKEN is missing. GitHub API calls may fail or be rate-limited.');
+    }
 
     // ── Fetch live repo metadata from GitHub ──────────────────────────────────
     let liveStars = 0;
@@ -50,20 +53,24 @@ export class RepoService {
     let dependencyCount = 0;
 
     try {
-      const octokit = new Octokit({ auth: githubToken });
+      console.log(`[RepoService] Fetching metadata for ${owner}/${name}...`);
+      const octokit = new Octokit({ auth: githubToken || undefined });
       const { data: repoData } = await octokit.repos.get({ owner, repo: name });
+      console.log(`[RepoService] Metadata fetched successfully for ${owner}/${name}`);
 
       liveStars = repoData.stargazers_count;
       liveForks = repoData.forks_count;
       liveOpenIssues = repoData.open_issues_count;
 
       // Check for CONTRIBUTING.md and test directories (best-effort)
+      console.log(`[RepoService] Fetching file tree for ${owner}/${name}...`);
       const { data: rootTree } = await octokit.git.getTree({
         owner,
         repo: name,
         tree_sha: repoData.default_branch,
         recursive: '0',
       });
+      console.log(`[RepoService] File tree fetched for ${owner}/${name}`);
       const rootPaths = rootTree.tree.map((f) => f.path?.toLowerCase() ?? '');
       hasContributingGuide = rootPaths.some((p) => p.includes('contributing'));
       hasTests = rootPaths.some((p) => p === 'tests' || p === 'test' || p === '__tests__' || p === 'spec');
@@ -78,6 +85,7 @@ export class RepoService {
     }
 
     // ── Upsert repo record in DB ──────────────────────────────────────────────
+    console.log(`[RepoService] Upserting repo in DB: ${repoUrl}`);
     let repo = await RepoModel.findOne({ repoUrl });
     if (!repo) {
       repo = await RepoModel.create({
@@ -96,14 +104,17 @@ export class RepoService {
       repo.openIssues = liveOpenIssues;
       await repo.save();
     }
+    console.log(`[RepoService] Repo upserted: ${repo.id}`);
 
     // ── Enqueue background RAG indexing job ───────────────────────────────────
+    console.log(`[RepoService] Enqueuing indexing job for ${repo.id}...`);
     const job = await indexRepoQueue.add('index-repo', {
       repoId: repo.id,
       repoUrl,
       branch: repo.defaultBranch,
       userId: userId ?? '',
     });
+    console.log(`[RepoService] Job enqueued: ${job.id}`);
 
     const repoObj = repo.toObject() as unknown as Repository;
     const repoId = `${owner}/${name}`;
@@ -111,6 +122,7 @@ export class RepoService {
     // ── Community Health (always calculated — no user needed) ─────────────────
     let communityHealth: CommunityHealthResult | undefined;
     try {
+      console.log(`[RepoService] Calculating community health for ${repoId}...`);
       const healthInputs = await fetchCommunityHealthInputs(owner, name, githubToken);
       communityHealth = calculateCommunityHealth(healthInputs);
       console.log(`[RepoService] Community health for ${repoId}: ${communityHealth.score}% (${communityHealth.label})`);
@@ -122,6 +134,7 @@ export class RepoService {
     let difficulty: RepoDifficultyResult | undefined;
     if (githubUsername) {
       try {
+        console.log(`[RepoService] Calculating difficulty for ${repoId} (user: ${githubUsername})...`);
         const [repoLanguages, userProfile] = await Promise.all([
           fetchRepoLanguages(owner, name, githubToken),
           fetchUserLanguageProfile(githubUsername, githubToken),

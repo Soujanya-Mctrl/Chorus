@@ -1,4 +1,5 @@
 // ── WebSocket Event Types ────────────────────────
+export const EVENTS_RUNTIME = true;
 
 export type EventType =
   | 'indexing:progress'

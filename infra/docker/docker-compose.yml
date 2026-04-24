@@ -99,8 +99,11 @@ services:
       dockerfile: infra/docker/Dockerfile.web
     ports:
       - '3000:3000'
+    env_file: 
+      - ../../apps/api/.env
+      - ../../apps/web/.env.local
     environment:
-      NEXT_PUBLIC_API_URL: http://3.106.34.37:3001
+      NEXT_PUBLIC_API_URL: http://localhost:3001
       NODE_ENV: production
     depends_on:
       - api

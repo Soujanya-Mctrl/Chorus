@@ -1,4 +1,5 @@
 // ── MCP Tool Contract Types ──────────────────────
+export const MCP_RUNTIME = true;
 
 import type { RepoAnalysis, Repository } from './repo';
 import type { DiagramData, GraphLevel } from './graph';

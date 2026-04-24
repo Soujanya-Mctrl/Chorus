@@ -1,4 +1,5 @@
 // ── User Types ───────────────────────────────────
+export const USER_RUNTIME = true;
 
 export interface User {
   id: string;
@@ -8,6 +9,7 @@ export interface User {
   avatarUrl: string;
   email?: string;
   skillProfile?: SkillProfile;
+  onboardingComplete?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

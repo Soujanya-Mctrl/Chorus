@@ -1,4 +1,5 @@
-// ── RAG Types ────────────────────────────────────
+// ── RAG & Inference Types ─────────────────────────
+export const RAG_RUNTIME = true;
 
 export interface CodeChunk {
   id: string;

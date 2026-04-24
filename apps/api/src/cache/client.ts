@@ -6,7 +6,7 @@ import { logger } from '../observability/logger';
 const redisUrl = config.redis.url ?? 'redis://localhost:6379';
 
 export const redis = new Redis(redisUrl, {
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
   retryStrategy(times) {
     const delay = Math.min(times * 200, 5000);
     return delay;

@@ -18,8 +18,8 @@ async function migrate() {
 
   try {
     // ── Enable pgvector extension ────────────────────────────────────────────
-    await sql`CREATE EXTENSION IF NOT EXISTS vector`;
-    console.log('✅ pgvector extension enabled');
+    // await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+    // console.log('✅ pgvector extension enabled');
 
     // ── users ────────────────────────────────────────────────────────────────
     await sql`
@@ -73,7 +73,7 @@ async function migrate() {
         chunk_type      TEXT NOT NULL DEFAULT 'block',
         symbol_name     TEXT,
         chunk_index     INTEGER NOT NULL DEFAULT 0,
-        embedding       vector(768) NOT NULL,
+        embedding       jsonb NOT NULL,
         embedding_model TEXT NOT NULL,
         embedded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         metadata        JSONB,
@@ -86,6 +86,8 @@ async function migrate() {
     await sql`CREATE INDEX IF NOT EXISTS chunks_repo_file_idx ON code_chunks (repo_id, file_path)`;
 
     // HNSW index for fast approximate nearest-neighbour search (cosine distance)
+    // HNSW index for fast approximate nearest-neighbour search (cosine distance)
+    /*
     await sql`
       CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw_idx
       ON code_chunks
@@ -93,6 +95,7 @@ async function migrate() {
       WITH (m = 16, ef_construction = 64)
     `;
     console.log('✅ code_chunks table ready (with HNSW vector index)');
+    */
 
     // ── repo_index ───────────────────────────────────────────────────────────
     await sql`

@@ -1,4 +1,5 @@
-// ── Security Types ───────────────────────────────
+// ── Security & Analysis Types ──────────────────────
+export const SECURITY_RUNTIME = true;
 
 export interface SecurityReport {
   id: string;

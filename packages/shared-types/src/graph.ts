@@ -1,4 +1,5 @@
-// ── Graph Types ──────────────────────────────────
+// ── Graph & Diagram Types ─────────────────────────
+export const GRAPH_RUNTIME = true;
 
 export type GraphLevel = 'file' | 'module' | 'service';
 

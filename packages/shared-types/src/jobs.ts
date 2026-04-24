@@ -1,4 +1,5 @@
-// ── Job Payload Types ────────────────────────────
+// ── Job & Queue Types ───────────────────────────
+export const JOBS_VERSION = '0.1.0';
 
 export interface IndexRepoJobPayload {
   repoId: string;
