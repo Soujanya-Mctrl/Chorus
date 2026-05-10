@@ -34,16 +34,20 @@ export default function ArchVisualization({
     // Track expanded nodes separately for each view to maintain state when switching
     const [archExpanded, setArchExpanded] = useState<Set<string>>(() => {
         const initial = new Set<string>();
-        for (const node of data.architecture.nodes) {
-            if (node.defaultExpanded) initial.add(node.id);
+        if (data?.architecture?.nodes) {
+            for (const node of data.architecture.nodes) {
+                if (node.defaultExpanded) initial.add(node.id);
+            }
         }
         return initial;
     });
 
     const [repoExpanded, setRepoExpanded] = useState<Set<string>>(() => {
         const initial = new Set<string>();
-        for (const node of data.repository.nodes) {
-            if (node.defaultExpanded) initial.add(node.id);
+        if (data?.repository?.nodes) {
+            for (const node of data.repository.nodes) {
+                if (node.defaultExpanded) initial.add(node.id);
+            }
         }
         return initial;
     });
